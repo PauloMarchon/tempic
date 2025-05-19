@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Minio;
+using Tempic.BackgroundServices;
 using Tempic.Data;
 using Tempic.Services;
 using Tempic.Settings;
@@ -35,6 +36,11 @@ builder.Services.AddSingleton<IMinioClient>(mc =>
 builder.Services.AddScoped<IImageUploadService, ImageUploadService>();
 
 builder.Services.AddSingleton<FileExtensionContentTypeProvider>();
+
+builder.Services.Configure<CleanupSettings>(
+    builder.Configuration.GetSection(CleanupSettings.SectionName));
+
+builder.Services.AddHostedService<ImageCleanupService>();
 
 var app = builder.Build();
 
