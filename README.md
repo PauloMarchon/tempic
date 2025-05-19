@@ -60,6 +60,8 @@ Este projeto serve como um estudo de uma API de gerenciamento de imagens com exp
     - UI para Gerenciamento: Desenvolver uma interface de usuário simples para visualizar e gerenciar as imagens.
 - Refatoração:
     - Refatorar e implementar boas práticas e patterns onde cabível, promovendo uma melhor legibilidade, escalabilidade e desacoplamento do código.
+- Testes:
+    - Implementar testes robustos que visam cobrir pelo menos 70% do código da aplicação (priorizando testes em áreas mais sensíveis/importantes), evitando comportamentos indesejados e mantendo a aplicação previsível.
 
 <br>
 
