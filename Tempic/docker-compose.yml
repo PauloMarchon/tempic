@@ -1,0 +1,23 @@
+services:
+ 
+    minio:
+        image: docker.io/bitnami/minio:latest
+        ports:
+          - '9000:9000'
+          - '9001:9001'
+        environment:
+          MINIO_ROOT_USER: admin
+          MINIO_ROOT_PASSWORD: password123
+          MINIO_DEFAULT_BUCKETS: image-bucket
+        volumes:
+          - 'minio_data:/data'
+        networks:
+          - tempic-network    
+ 
+volumes:
+    minio_data:
+        driver: local
+
+networks:
+    tempic-network:
+        driver: bridge
