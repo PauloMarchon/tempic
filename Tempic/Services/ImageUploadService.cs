@@ -49,73 +49,92 @@ namespace Tempic.Services
                 throw new ArgumentException($"File extension '{fileExtension}' is not allowed.", nameof(fileName));
             }
 
-            using var memoryStream = new MemoryStream();
-            await fileStream.CopyToAsync(memoryStream);
-            memoryStream.Position = 0;
-
-            var uniqueLinkId = Guid.NewGuid();
-            _logger.LogInformation($"Generated unique link ID: {uniqueLinkId}");
-
-            var uploadDateUtc = DateTime.UtcNow;
-            var expirationDate = uploadDateUtc.Add(expirationDuration);
-            _logger.LogInformation($"Upload date: {uploadDateUtc}, Expiration date: {expirationDate}");
-
-            var extension = Path.GetExtension(fileName);
-            var objectName = $"{uniqueLinkId}{extension}";
-            _logger.LogInformation($"Generated object name: {objectName}");
-
+            var memoryStream = new MemoryStream();
             try
             {
-                var putArgs = new PutObjectArgs()
-                    .WithBucket(_minioSettings.BucketName)
-                    .WithObject(objectName)
-                    .WithStreamData(fileStream)
-                    .WithContentType("application/octet-stream")
-                    .WithObjectSize(fileStream.Length);
 
-                await _minioClient.PutObjectAsync(putArgs).ConfigureAwait(false);
-                _logger.LogInformation($"Image uploaded to MinIO: {objectName}");
-            }
-            catch (MinioException ex)
-            {
-                _logger.LogError(ex, "Error uploading image to MinIO");
-                throw new Exception("Error uploading image to MinIO", ex);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error uploading image to MinIO");
-                throw new Exception("Unexpected error uploading image to MinIO", ex);
-            }
+                await fileStream.CopyToAsync(memoryStream);
 
-            var metadata = new ImageMetadata
-            {
-                UniqueLinkId = uniqueLinkId,
-                OriginalFileName = fileName,
-                MinioBucketName = _minioSettings.BucketName,
-                MinioObjectName = objectName,
-                ExpirationDateUtc = expirationDate,
-                UploadDateUtc = uploadDateUtc
-            };
-            _logger.LogInformation($"Image metadata created for link: {uniqueLinkId}");
+                if (memoryStream.Length == 0)
+                {
+                    _logger.LogError("File stream is empty after copying.");
+                    throw new InvalidOperationException("File stream is empty after copying.");
+                }
 
-            try
-            {
-                _dbContext.ImageMetadatas.Add(metadata);
-                await _dbContext.SaveChangesAsync().ConfigureAwait(false);
-                _logger.LogInformation($"Image metadata saved to database for link: {uniqueLinkId}");
-            }
-            catch (DbUpdateException ex)
-            {
-                _logger.LogError(ex, "Error saving image metadata to database");
-                throw new Exception("Error saving image metadata to database", ex);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error saving image metadata to database");
-                throw new Exception("Unexpected error saving image metadata to database", ex);
-            }
+                memoryStream.Position = 0;
 
-            return uniqueLinkId;
+                byte[] fileBytes = memoryStream.ToArray();
+                using var byteStream = new MemoryStream(fileBytes);
+
+                var uniqueLinkId = Guid.NewGuid();
+                _logger.LogInformation($"Generated unique link ID: {uniqueLinkId}");
+
+                var uploadDateUtc = DateTime.UtcNow;
+                var expirationDate = uploadDateUtc.Add(expirationDuration);
+                _logger.LogInformation($"Upload date: {uploadDateUtc}, Expiration date: {expirationDate}");
+
+                var extension = Path.GetExtension(fileName);
+                var objectName = $"{uniqueLinkId}{extension}";
+                _logger.LogInformation($"Generated object name: {objectName}");
+
+                try
+                {
+                    var putArgs = new PutObjectArgs()
+                        .WithBucket(_minioSettings.BucketName)
+                        .WithObject(objectName)
+                        .WithStreamData(byteStream)
+                        .WithContentType("application/octet-stream")
+                        .WithObjectSize(byteStream.Length);
+
+                    await _minioClient.PutObjectAsync(putArgs).ConfigureAwait(false);
+                    _logger.LogInformation($"Image uploaded to MinIO: {objectName}");
+                }
+                catch (MinioException ex)
+                {
+                    _logger.LogError(ex, "Error uploading image to MinIO");
+                    throw new Exception("Error uploading image to MinIO", ex);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Unexpected error uploading image to MinIO");
+                    throw new Exception("Unexpected error uploading image to MinIO", ex);
+                }
+
+                var metadata = new ImageMetadata
+                {
+                    UniqueLinkId = uniqueLinkId,
+                    OriginalFileName = fileName,
+                    MinioBucketName = _minioSettings.BucketName,
+                    MinioObjectName = objectName,
+                    ExpirationDateUtc = expirationDate,
+                    UploadDateUtc = uploadDateUtc
+                };
+                _logger.LogInformation($"Image metadata created for link: {uniqueLinkId}");
+
+                try
+                {
+                    _dbContext.ImageMetadatas.Add(metadata);
+                    await _dbContext.SaveChangesAsync().ConfigureAwait(false);
+                    _logger.LogInformation($"Image metadata saved to database for link: {uniqueLinkId}");
+                }
+                catch (DbUpdateException ex)
+                {
+                    _logger.LogError(ex, "Error saving image metadata to database");
+                    throw new Exception("Error saving image metadata to database", ex);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Unexpected error saving image metadata to database");
+                    throw new Exception("Unexpected error saving image metadata to database", ex);
+                }
+
+                return uniqueLinkId;
+            }
+            finally
+            {
+                _logger.LogInformation($"Disposing streams");
+                memoryStream.Dispose();         
+            }
         }
 
         public async Task GetImageStreamAsync(Guid uniqueLinkId, Stream outputStream)

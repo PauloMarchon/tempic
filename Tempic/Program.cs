@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Minio;
 using Tempic.Data;
+using Tempic.Services;
 using Tempic.Settings;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,6 +20,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.Configure<MinioSettings>(
     builder.Configuration.GetSection("MinioSettings"));
+builder.Services.AddScoped<MinioSettings>(sp => sp.GetRequiredService<IOptions<MinioSettings>>().Value);
 
 builder.Services.AddSingleton<IMinioClient>(mc => 
 {
@@ -28,6 +31,10 @@ builder.Services.AddSingleton<IMinioClient>(mc =>
         .WithCredentials(minioSettings.AccessKey, minioSettings.SecretKey)
         .Build();
 });
+
+builder.Services.AddScoped<IImageUploadService, ImageUploadService>();
+
+builder.Services.AddSingleton<FileExtensionContentTypeProvider>();
 
 var app = builder.Build();
 
