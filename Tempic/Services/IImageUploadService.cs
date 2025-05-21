@@ -1,11 +1,11 @@
-﻿using Tempic.Models;
+﻿using Tempic.DTOs;
+using Tempic.Models;
 
 namespace Tempic.Services
 {
     public interface IImageUploadService
     {
-        Task<Guid> UploadImageAsync(Stream fileStream, string fileName, TimeSpan expirationDuration);
-        Task<ImageMetadata?> GetImageMetadataAsync(Guid uniqueLinkId);
+        Task<List<Guid>> UploadImageAsync(List<UploadImageRequest> requests);
         Task GetImageStreamAsync(Guid uniqueLinkId, Stream outputStream);
         Task DeleteImageAsync(Guid uniqueLinkId);
     }
