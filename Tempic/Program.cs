@@ -33,6 +33,7 @@ builder.Services.AddSingleton<IMinioClient>(mc =>
         .Build();
 });
 
+builder.Services.AddSingleton<IMinioService, MinioService>();
 builder.Services.AddScoped<IImageUploadService, ImageUploadService>();
 
 builder.Services.AddSingleton<FileExtensionContentTypeProvider>();
@@ -57,16 +58,3 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
-/*
- * TODO
- * try
-            {
-                bool found = await _minioClient.BucketExistsAsync(new BucketExistsArgs()
-                    .WithBucket(_minioSettings.BucketName));
-            }
-            catch (MinioException ex)
-            {
-                _logger.LogError(ex, "Error checking if bucket exists");
-                throw new Exception("Error checking if bucket exists", ex);
-            }
-*/
