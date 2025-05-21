@@ -62,6 +62,7 @@ namespace Tempic.Services
                     .WithContentType("application/octet-stream");
                 //.WithServerSideEncryption(ssec);
 
+                _logger.LogInformation($"Uploading file to MinIO: {objectName}");
                 await _minioClient.PutObjectAsync(putArgs).ConfigureAwait(false);
                 _logger.LogInformation($"File uploaded to MinIO: {objectName}");
             }
@@ -102,7 +103,7 @@ namespace Tempic.Services
                 throw new Exception($"Unexpected error uploading object to MinIO: {ex.Message}");
             }
         }
-        public async Task GetFileAsync(string bucketName, string objectName, Stream destinationStream)
+        public async Task GetFileAsync(string bucketName, string objectName, Stream outputStream)
         {
             try
             {
@@ -116,7 +117,7 @@ namespace Tempic.Services
                     .WithObject(objectName)
                     .WithCallbackStream((stream) =>
                         {
-                            stream.CopyTo(destinationStream);
+                            stream.CopyTo(outputStream);
                         });
                 await _minioClient.GetObjectAsync(getArgs).ConfigureAwait(false);
                 _logger.LogInformation($"File uploaded to MinIO: {objectName}");
