@@ -1,3 +1,4 @@
+using FluentValidation;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -5,8 +6,11 @@ using Microsoft.Extensions.Options;
 using Minio;
 using Tempic.BackgroundServices;
 using Tempic.Data;
+using Tempic.DTOs;
+using Tempic.Interfaces;
 using Tempic.Services;
 using Tempic.Settings;
+using Tempic.Validator;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,15 +37,17 @@ builder.Services.AddSingleton<IMinioClient>(mc =>
         .Build();
 });
 
-builder.Services.AddSingleton<IMinioService, MinioService>();
+builder.Services.AddScoped<IMinioService, MinioService>();
+builder.Services.AddScoped<IImageMetadataRepository, ImageMetadataRepository>();
 builder.Services.AddScoped<IImageUploadService, ImageUploadService>();
-
+builder.Services.AddScoped<IValidator<UploadImageRequest>, UploadImageRequestValidator>();
 builder.Services.AddSingleton<FileExtensionContentTypeProvider>();
 
-builder.Services.Configure<CleanupSettings>(
-    builder.Configuration.GetSection(CleanupSettings.SectionName));
-
-builder.Services.AddHostedService<ImageCleanupService>();
+/*
+ builder.Services.Configure<CleanupSettings>(
+ builder.Configuration.GetSection(CleanupSettings.SectionName));
+ builder.Services.AddHostedService<ImageCleanupService>();
+ */
 
 var app = builder.Build();
 

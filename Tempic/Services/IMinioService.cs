@@ -1,4 +1,4 @@
-﻿\namespace Tempic.Services
+﻿namespace Tempic.Services
 {
     public interface IMinioService
     {

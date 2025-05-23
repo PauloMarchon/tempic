@@ -13,7 +13,7 @@ namespace Tempic.Services
         private readonly IMinioClient _minioClient;
         private readonly MinioSettings _minioSettings;
         private readonly ILogger<MinioService> _logger;
-        public MinioService(MinioClient minioClient, MinioSettings minioSettings, ILogger<MinioService> logger)
+        public MinioService(IMinioClient minioClient, MinioSettings minioSettings, ILogger<MinioService> logger)
         {
             _minioClient = minioClient;
             _minioSettings = minioSettings;

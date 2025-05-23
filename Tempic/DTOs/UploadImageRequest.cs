@@ -2,14 +2,13 @@
 
 namespace Tempic.DTOs
 {
-    public record UploadImageRequest (
-        [Required]
-        FormFile File,
-
-        [Required]
-        [Range(1,60)]
-        int DurationMinutes)
+    public class UploadImageRequest
     {
+        [Required]
+        public IFormFile File { get; set; }
 
+        [Required]
+        [Range(1, 60)]
+        public int DurationMinutes { get; set; }
     }
 }
