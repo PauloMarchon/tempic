@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
+using Tempic.DTOs;
 using Tempic.Services;
 
 namespace Tempic.Controllers
@@ -9,73 +10,43 @@ namespace Tempic.Controllers
     public class ImageMetadataController : ControllerBase
     {
         private readonly IImageUploadService _iImageUploadService;
-        private readonly FileExtensionContentTypeProvider _contentTypeProvider;
         private readonly ILogger<ImageMetadataController> _logger;
 
         public ImageMetadataController(
-            IImageUploadService iImageUploadService, 
-            FileExtensionContentTypeProvider contentTypeProvider,
+            IImageUploadService iImageUploadService,
             ILogger<ImageMetadataController> logger)
         {
             _iImageUploadService = iImageUploadService;
-            _contentTypeProvider = contentTypeProvider;
             _logger = logger;
         }
 
+        [RequestFormLimits(MultipartBodyLengthLimit = 10 * 1024 * 1024)] // 10 MB limit
         [HttpPost("upload")]
         public async Task<IActionResult> UploadImage(
-            IFormFile file,
-            [FromForm] int durationMinutes)
+            [FromForm] List<UploadImageRequest> request)
         {
+  
             _logger.LogInformation("Received file upload request.");
+            var links = await _iImageUploadService.UploadImageAsync(request);
+            
+            var imageUrls = links.Select(link => Url.Action("GetImage", "ImageMetadata", new { link }, Request.Scheme)).ToList();
 
-            if (file == null || file.Length == 0)
+            UploadImageResponse uploadImageResponse = new UploadImageResponse
             {
-                return BadRequest("No file uploaded.");
-            }
-            if (durationMinutes <= 0)
-            {
-                return BadRequest("Invalid duration.");
-            }
+                Links = imageUrls
+            };
 
-            try
-            {
-                _logger.LogInformation("Uploading file: {FileName}", file.FileName);
-                var expirationDuration = TimeSpan.FromMinutes(durationMinutes);
-                using var stream = file.OpenReadStream();
-                var uniqueLinkId = await _iImageUploadService.UploadImageAsync(stream, file.FileName, expirationDuration);
-
-                var imageUrl = Url.Action("GetImage", "ImageMetadata", new { uniqueLinkId }, Request.Scheme);
-
-                return Ok(new { Link = imageUrl });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
+            return Ok(uploadImageResponse);          
         }
 
         [HttpGet("{uniqueLinkId:guid}")]
         public async Task<IActionResult> GetImage(Guid uniqueLinkId)
         {
             try
-            {
-                var imageMetadata = await _iImageUploadService.GetImageMetadataAsync(uniqueLinkId);
-                
-                if (imageMetadata == null)
-                {
-                    return NotFound("Image not found.");
-                }
+            {  
+                Response.ContentType = "application/octet-stream";
 
-                string contentType;
-                if (!_contentTypeProvider.TryGetContentType(imageMetadata.OriginalFileName, out contentType))
-                {
-                    contentType = "application/octet-stream"; // Default content type
-                }
-
-                Response.ContentType = contentType;
-
-                Response.Headers["Content-Disposition"] = $"inline; filename=\"{imageMetadata.OriginalFileName}\"";
+                Response.Headers["Content-Disposition"] = $"inline; filename=\"{uniqueLinkId.ToString()}\"";
 
                 await _iImageUploadService.GetImageStreamAsync(uniqueLinkId, Response.BodyWriter.AsStream());
 
