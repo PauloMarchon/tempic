@@ -35,7 +35,7 @@ namespace Tempic.BackgroundServices
                         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                         var imageUploadService = scope.ServiceProvider.GetRequiredService<IImageUploadService>();
 
-                        var expiredImages = await dbContext.ImageMetadata
+                        var expiredImages = await dbContext.ImageMetadatas
                             .Where(i => i.ExpirationDateUtc < DateTime.UtcNow)
                             .ToListAsync(stoppingToken);
 
@@ -51,7 +51,7 @@ namespace Tempic.BackgroundServices
                                 try
                                 {
                                     await imageUploadService.DeleteImageAsync(image.UniqueLinkId);
-                                    dbContext.ImageMetadata.Remove(image);
+                                    dbContext.ImageMetadatas.Remove(image);
                                     _logger.LogInformation($"Deleted expired image with ID: {image.UniqueLinkId}");
                                 }
                                 catch (Exception ex)

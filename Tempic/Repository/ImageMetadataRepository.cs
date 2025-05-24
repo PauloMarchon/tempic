@@ -15,19 +15,18 @@ namespace Tempic.Interfaces
 
         public async Task<ImageMetadata> GetImageMetadataByUniqueLinkIdAsync(Guid uniqueLinkId)
         {
-            return await context.ImageMetadata.FirstOrDefaultAsync(x => x.UniqueLinkId == uniqueLinkId)
-                   ?? throw new ImageNotFoundOrExpiredException("Image not found");
+            return await context.ImageMetadatas.FirstOrDefaultAsync(x => x.UniqueLinkId == uniqueLinkId);
         }
         public async Task InsertImageMetadataAsync(ImageMetadata imageMetadata)
         {
-            await context.ImageMetadata.AddAsync(imageMetadata);
+            await context.ImageMetadatas.AddAsync(imageMetadata);
         }
         public async Task DeleteImageMetadataAsync(Guid uniqueLinkId)
         {
-            var entity = await context.ImageMetadata.FirstOrDefaultAsync(x => x.UniqueLinkId == uniqueLinkId);
+            var entity = await context.ImageMetadatas.FirstOrDefaultAsync(x => x.UniqueLinkId == uniqueLinkId);
 
             if (entity != null)     
-                context.ImageMetadata.Remove(entity);
+                context.ImageMetadatas.Remove(entity);
         }
         public async Task SaveChangesAsync()
         {

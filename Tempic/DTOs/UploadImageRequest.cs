@@ -9,6 +9,6 @@ namespace Tempic.DTOs
 
         [Required]
         [Range(1, 60)]
-        public int DurationMinutes { get; set; }
+        public double DurationMinutes { get; set; }
     }
 }
