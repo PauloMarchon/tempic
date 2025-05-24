@@ -118,22 +118,20 @@ namespace Tempic.Services
             return uniqueLinkIdResults;
         }
 
-        public async Task<Stream> GetImageStreamAsync(Guid uniqueLinkId)
+        public async Task<Stream> GetImageStreamAsync(ImageMetadata imageMetadata)
         {
-            _logger.LogInformation("(Service)Retrieving image stream for UniqueLinkId: {UniqueLinkId}", uniqueLinkId);
-            var imageMetadata = await _imageMetadataRepository.GetImageMetadataByUniqueLinkIdAsync(uniqueLinkId);
-
+            _logger.LogInformation("Validating imageMetadata..");
             if (imageMetadata == null)
-                throw new ImageNotFoundOrExpiredException($"Image with UniqueLinkId {uniqueLinkId} not found.");
+                throw new ImageNotFoundOrExpiredException($"Image not found/is null.");
 
             if (imageMetadata.ExpirationDateUtc < DateTime.UtcNow)
-                throw new ImageNotFoundOrExpiredException($"Image with UniqueLinkId {uniqueLinkId} has expired.");
+                throw new ImageNotFoundOrExpiredException($"Image has expired.");
 
             var bucketName = imageMetadata.MinioBucketName;
             var objectName = imageMetadata.MinioObjectName;
 
             if (string.IsNullOrEmpty(bucketName) || string.IsNullOrEmpty(objectName))
-                throw new InvalidOperationException($"Invalid bucket name or object name for UniqueLinkId {uniqueLinkId}.");
+                throw new InvalidOperationException($"Invalid bucket name or object name for UniqueLinkId: {imageMetadata.UniqueLinkId}");
 
             _logger.LogInformation("Retrieving image from MinIO...");
             return await _minioService.GetFileAsync(bucketName, objectName);

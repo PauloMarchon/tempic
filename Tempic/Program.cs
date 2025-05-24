@@ -43,12 +43,10 @@ builder.Services.AddScoped<IImageUploadService, ImageUploadService>();
 builder.Services.AddScoped<IValidator<UploadImageRequest>, UploadImageRequestValidator>();
 builder.Services.AddSingleton<FileExtensionContentTypeProvider>();
 
-/*
- builder.Services.Configure<CleanupSettings>(
- builder.Configuration.GetSection(CleanupSettings.SectionName));
- builder.Services.AddHostedService<ImageCleanupService>();
- */
-
+ //builder.Services.Configure<CleanupSettings>(
+ //builder.Configuration.GetSection(CleanupSettings.SectionName));
+ //builder.Services.AddHostedService<ImageCleanupService>();
+ 
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
