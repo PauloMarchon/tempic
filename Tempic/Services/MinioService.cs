@@ -59,6 +59,7 @@ namespace Tempic.Services
                     .WithBucket(bucketName)
                     .WithObject(objectName)
                     .WithStreamData(fileStream)
+                    .WithObjectSize(fileStream.Length)
                     .WithContentType("application/octet-stream");
                 //.WithServerSideEncryption(ssec);
 
@@ -83,10 +84,11 @@ namespace Tempic.Services
             {
                 using var byteStream = new MemoryStream(fileBytes);
 
-                var putArgs = new PutObjectArgs()
+                PutObjectArgs putArgs = new PutObjectArgs()
                           .WithBucket(bucketName)
                           .WithObject(objectName)
                           .WithStreamData(byteStream)
+                          .WithObjectSize(byteStream.Length)
                           .WithContentType("application/octet-stream");
 
                 await _minioClient.PutObjectAsync(putArgs).ConfigureAwait(false);
@@ -103,24 +105,26 @@ namespace Tempic.Services
                 throw new Exception($"Unexpected error uploading object to MinIO: {ex.Message}");
             }
         }
-        public async Task GetFileAsync(string bucketName, string objectName, Stream outputStream)
+        public async Task<Stream> GetFileAsync(string bucketName, string objectName)
         {
             try
-            {
-                StatObjectArgs statArgs = new StatObjectArgs()
-                    .WithBucket(bucketName)
-                    .WithObject(objectName);
-                await _minioClient.StatObjectAsync(statArgs);
+            {              
+                var memoryStream = new MemoryStream();
 
                 GetObjectArgs getArgs = new GetObjectArgs()
                     .WithBucket(bucketName)
                     .WithObject(objectName)
                     .WithCallbackStream((stream) =>
                         {
-                            stream.CopyTo(outputStream);
+                            stream.CopyTo(memoryStream);
                         });
-                await _minioClient.GetObjectAsync(getArgs).ConfigureAwait(false);
-                _logger.LogInformation($"File uploaded to MinIO: {objectName}");
+
+                await _minioClient.GetObjectAsync(getArgs);
+                _logger.LogInformation($"File retrieved from MinIO: {objectName}");
+                
+                memoryStream.Position = 0;
+                
+                return memoryStream;
             }
             catch (MinioException ex)
             {

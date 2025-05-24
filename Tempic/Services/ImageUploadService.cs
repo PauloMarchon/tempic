@@ -27,8 +27,10 @@ namespace Tempic.Services
 
         public async Task<List<Guid>> UploadImageAsync(List<UploadImageRequest> requests)
         {
+            _logger.LogInformation("Starting image upload process...");
             var uniqueLinkIdResults = new List<Guid>();
 
+            _logger.LogInformation("Validating requests...");
             foreach (var request in requests)
             {
                 var validationResult = await _validator.ValidateAsync(request);
@@ -42,6 +44,7 @@ namespace Tempic.Services
                 }
             }
 
+            _logger.LogInformation("Requests validated successfully. Proceeding with upload...");
             foreach (var request in requests)
             {
                 var memoryStream = new MemoryStream();
@@ -50,7 +53,7 @@ namespace Tempic.Services
                 {
                     var uniqueLinkId = Guid.NewGuid();
                     var uploadDateUtc = DateTime.UtcNow;
-                    var expirationDate = uploadDateUtc.Add(TimeSpan.FromMinutes(request.DurationMinutes));
+                    var expirationDate = uploadDateUtc.AddMinutes(request.DurationMinutes);
                     var extension = Path.GetExtension(request.File.FileName);
                     var objectName = $"{uniqueLinkId}{extension}";
 
@@ -64,6 +67,7 @@ namespace Tempic.Services
                         UploadDateUtc = uploadDateUtc
                     };
 
+                    _logger.LogInformation("Inserting image metadata into database...");
                     await _imageMetadataRepository.InsertImageMetadataAsync(imageMetadata);
 
                     using var stream = request.File.OpenReadStream();
@@ -78,12 +82,16 @@ namespace Tempic.Services
                     memoryStream.Position = 0;
 
                     byte[] fileBytes = memoryStream.ToArray();
-                    using var byteStream = new MemoryStream(fileBytes);
+                    //using var byteStream = new MemoryStream(fileBytes);
 
-                    await _minioService.UploadFileAsync(_bucketName, objectName, byteStream);
-                    
+                    _logger.LogInformation("Uploading file to MinIO...");
+                    await _minioService.UploadFileAsync(_bucketName, objectName, fileBytes);
+                    _logger.LogInformation("File uploaded to MinIO successfully.");
+
+                    _logger.LogInformation("Saving changes to database...");
                     await _imageMetadataRepository.SaveChangesAsync();
 
+                    _logger.LogInformation("Image upload process completed successfully. UniqueLinkId: {UniqueLinkId}", uniqueLinkId);
                     uniqueLinkIdResults.Add(uniqueLinkId);
                 }
                 catch (MinioException ex)
@@ -103,23 +111,32 @@ namespace Tempic.Services
                 }
                 finally
                 {
+                    _logger.LogInformation("Disposing memory stream...");
                     memoryStream.Dispose();
                 }
             }
             return uniqueLinkIdResults;
         }
 
-        public async Task GetImageStreamAsync(Guid uniqueLinkId, Stream outputStream)
+        public async Task<Stream> GetImageStreamAsync(Guid uniqueLinkId)
         {
+            _logger.LogInformation("(Service)Retrieving image stream for UniqueLinkId: {UniqueLinkId}", uniqueLinkId);
             var imageMetadata = await _imageMetadataRepository.GetImageMetadataByUniqueLinkIdAsync(uniqueLinkId);
 
             if (imageMetadata == null)
                 throw new ImageNotFoundOrExpiredException($"Image with UniqueLinkId {uniqueLinkId} not found.");
 
+            if (imageMetadata.ExpirationDateUtc < DateTime.UtcNow)
+                throw new ImageNotFoundOrExpiredException($"Image with UniqueLinkId {uniqueLinkId} has expired.");
+
             var bucketName = imageMetadata.MinioBucketName;
             var objectName = imageMetadata.MinioObjectName;
 
-            await _minioService.GetFileAsync(bucketName, objectName, outputStream);
+            if (string.IsNullOrEmpty(bucketName) || string.IsNullOrEmpty(objectName))
+                throw new InvalidOperationException($"Invalid bucket name or object name for UniqueLinkId {uniqueLinkId}.");
+
+            _logger.LogInformation("Retrieving image from MinIO...");
+            return await _minioService.GetFileAsync(bucketName, objectName);
         }
 
         public async Task DeleteImageAsync(Guid uniqueLinkId)

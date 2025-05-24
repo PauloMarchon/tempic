@@ -6,7 +6,7 @@ namespace Tempic.Services
     public interface IImageUploadService
     {
         Task<List<Guid>> UploadImageAsync(List<UploadImageRequest> requests);
-        Task GetImageStreamAsync(Guid uniqueLinkId, Stream outputStream);
+        Task<Stream> GetImageStreamAsync(Guid uniqueLinkId);
         Task DeleteImageAsync(Guid uniqueLinkId);
     }
 }

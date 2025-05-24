@@ -5,7 +5,7 @@
         Task StartAsync();
         Task UploadFileAsync(string bucketName, string objectName, Stream fileStream);
         Task UploadFileAsync(string bucketName, string objectName, byte[] fileBytes);
-        Task GetFileAsync(string bucketName, string objectName, Stream outputStream);
+        Task<Stream> GetFileAsync(string bucketName, string objectName);
         Task DeleteFileAsync(string bucketName, string objectName);
     }
 }
