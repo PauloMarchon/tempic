@@ -1,7 +1,12 @@
-﻿namespace Tempic.Repository
+﻿using Tempic.Models;
+
+namespace Tempic.Repository
 {
     public interface IShortenedUrlRepository
     {
-        Task<string> GenerateUniqueShortCodeAsync();
+        Task<ShortenedUrl> GetShortenedUrlByShortCodeAsync(string shortCode);
+        Task InsertShortenedUrlAsync(ShortenedUrl shortenedUrl);
+        Task DeleteShortenedUrlAsync(Guid imageUniqueLinkId);
+        Task SaveChangesAsync();
     }
 }
