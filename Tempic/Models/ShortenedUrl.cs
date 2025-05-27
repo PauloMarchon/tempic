@@ -7,6 +7,5 @@
         public Guid ImageUniqueLinkId { get; set; }
         public DateTime CreationDateUtc { get; set; }
         public DateTime? ExpirationDateUtc { get; set; }
-        public ImageMetadata ImageMetadata { get; set; }
     }
 }
