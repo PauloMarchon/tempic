@@ -50,7 +50,7 @@ namespace Tempic.BackgroundServices
                             {
                                 try
                                 {
-                                    await imageUploadService.DeleteImageAsync(image.UniqueLinkId);
+                                    await imageUploadService.DeleteImageAsync(image.MinioObjectName);
                                     dbContext.ImageMetadatas.Remove(image);
                                     _logger.LogInformation($"Deleted expired image with ID: {image.UniqueLinkId}");
                                 }

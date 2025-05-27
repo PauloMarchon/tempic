@@ -48,6 +48,7 @@ builder.Services.AddSingleton<IMinioClient>(mc =>
 builder.Services.AddScoped<IMinioService, MinioService>();
 builder.Services.AddScoped<IImageMetadataRepository, ImageMetadataRepository>();
 builder.Services.AddScoped<IImageUploadService, ImageUploadService>();
+builder.Services.AddScoped<IImageMetadataService, ImageMetadataService>();
 builder.Services.AddScoped<IShortenedUrlRepository, ShortenedUrlRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IValidator<UploadImageRequest>, UploadImageRequestValidator>();
