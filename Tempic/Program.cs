@@ -50,8 +50,8 @@ builder.Services.AddScoped<IImageMetadataRepository, ImageMetadataRepository>();
 builder.Services.AddScoped<IImageUploadService, ImageUploadService>();
 builder.Services.AddScoped<IShortenedUrlRepository, ShortenedUrlRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-builder.Services.AddScoped<IShortCodeGeneratorService, ShortCodeGeneratorService>();
 builder.Services.AddScoped<IValidator<UploadImageRequest>, UploadImageRequestValidator>();
+builder.Services.AddScoped<ShortCodeGenerator>();
 builder.Services.AddSingleton<FileExtensionContentTypeProvider>();
 
  //builder.Services.Configure<CleanupSettings>(

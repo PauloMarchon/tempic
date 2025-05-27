@@ -1,34 +1,36 @@
 ﻿using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Minio.Exceptions;
+using Tempic.Data;
 using Tempic.DTOs;
 using Tempic.Exceptions;
-using Tempic.Interfaces;
 using Tempic.Models;
 
 namespace Tempic.Services
 {
     public class ImageUploadService : IImageUploadService
     {
-        private readonly IImageMetadataRepository _imageMetadataRepository;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IMinioService _minioService;
+        private readonly ShortCodeGenerator _shortCodeGenerator;
         private readonly string _bucketName;
         private readonly IValidator<UploadImageRequest> _validator;
         private readonly ILogger<ImageUploadService> _logger;
         
-        public ImageUploadService(IImageMetadataRepository imageMetadataRepository, IMinioService minioService, IValidator<UploadImageRequest> validator, ILogger<ImageUploadService> logger, IConfiguration configuration)
+        public ImageUploadService(IUnitOfWork unitOfWork, IMinioService minioService, ShortCodeGenerator shortCodeGenerator, IValidator<UploadImageRequest> validator, ILogger<ImageUploadService> logger, IConfiguration configuration)
         {
-            _imageMetadataRepository = imageMetadataRepository;
+            _unitOfWork = unitOfWork;
             _minioService = minioService;
+            _shortCodeGenerator = shortCodeGenerator;
             _bucketName = configuration.GetValue<string>("MinioSettings:ImagesBucketName");
             _validator = validator;
             _logger = logger;
         }
 
-        public async Task<List<Guid>> UploadImageAsync(List<UploadImageRequest> requests)
+        public async Task<List<string>> UploadImageAsync(List<UploadImageRequest> requests)
         {
             _logger.LogInformation("Starting image upload process...");
-            var uniqueLinkIdResults = new List<Guid>();
+            var uniqueLinkIdResults = new List<string>();
 
             _logger.LogInformation("Validating requests...");
             foreach (var request in requests)
@@ -51,6 +53,8 @@ namespace Tempic.Services
 
                 try
                 {
+                    await _unitOfWork.BeginTransactionAsync();
+
                     var uniqueLinkId = Guid.NewGuid();
                     var uploadDateUtc = DateTime.UtcNow;
                     var expirationDate = uploadDateUtc.AddMinutes(request.DurationMinutes);
@@ -68,7 +72,8 @@ namespace Tempic.Services
                     };
 
                     _logger.LogInformation("Inserting image metadata into database...");
-                    await _imageMetadataRepository.InsertImageMetadataAsync(imageMetadata);
+                    await _unitOfWork.ImageMetadataRepository.InsertImageMetadataAsync(imageMetadata);
+                    //await _unitOfWork.SaveChangesAsync();
 
                     using var stream = request.File.OpenReadStream();
                     await stream.CopyToAsync(memoryStream);
@@ -88,25 +93,40 @@ namespace Tempic.Services
                     await _minioService.UploadFileAsync(_bucketName, objectName, fileBytes);
                     _logger.LogInformation("File uploaded to MinIO successfully.");
 
-                    _logger.LogInformation("Saving changes to database...");
-                    await _imageMetadataRepository.SaveChangesAsync();
+                    _logger.LogInformation("Generating unique short code for the image...");
+                    string shortCode = _shortCodeGenerator.GenerateUniqueShortCode();
 
-                    _logger.LogInformation("Image upload process completed successfully. UniqueLinkId: {UniqueLinkId}", uniqueLinkId);
-                    uniqueLinkIdResults.Add(uniqueLinkId);
+                    var shortenedUrl = new ShortenedUrl
+                    {
+                        ShortCode = shortCode,
+                        ImageUniqueLinkId = imageMetadata.UniqueLinkId,
+                        CreationDateUtc = DateTime.UtcNow,
+                        ExpirationDateUtc = imageMetadata.ExpirationDateUtc
+                    };
+
+                    _logger.LogInformation("Inserting shortened URL into database with ShortCode: {ShortCode}", shortCode);
+                    await _unitOfWork.ShortenedUrlRepository.InsertShortenedUrlAsync(shortenedUrl);
+                  
+                    await _unitOfWork.CommitAsync();
+
+                    uniqueLinkIdResults.Add(shortCode);
                 }
                 catch (MinioException ex)
                 {
                     _logger.LogError("Minio error: {Message}", ex.Message);
+                    await _unitOfWork.RollbackAsync();
                     throw new MinioException($"Minio error: {ex.Message}");
                 }
                 catch (DbUpdateException ex)
                 {
                     _logger.LogError(ex, "Error saving image metadata to database");
+                    await _unitOfWork.RollbackAsync();
                     throw new Exception("Error saving image metadata to database", ex);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError("An error occurred while uploading the image: {Message}", ex.Message);
+                    await _unitOfWork.RollbackAsync();
                     throw new Exception($"An error occurred while uploading the image: {ex.Message}");
                 }
                 finally
@@ -115,7 +135,9 @@ namespace Tempic.Services
                     memoryStream.Dispose();
                 }
             }
-            return uniqueLinkIdResults;
+            
+            _logger.LogInformation("Image upload process completed successfully. Returning unique link IDs.");
+            return uniqueLinkIdResults;     
         }
 
         public async Task<Stream> GetImageStreamAsync(ImageMetadata imageMetadata)
@@ -139,7 +161,7 @@ namespace Tempic.Services
 
         public async Task DeleteImageAsync(Guid uniqueLinkId)
         {
-            var imageMetadata = await _imageMetadataRepository.GetImageMetadataByUniqueLinkIdAsync(uniqueLinkId);
+            var imageMetadata = await _unitOfWork.ImageMetadataRepository.GetImageMetadataByUniqueLinkIdAsync(uniqueLinkId);
             
             if (imageMetadata == null)
                 throw new ImageNotFoundOrExpiredException($"Image with UniqueLinkId {uniqueLinkId} not found.");
@@ -151,9 +173,9 @@ namespace Tempic.Services
             {
                 await _minioService.DeleteFileAsync(bucketName, objectName);
                 
-                await _imageMetadataRepository.DeleteImageMetadataAsync(uniqueLinkId);
+                await _unitOfWork.ImageMetadataRepository.DeleteImageMetadataAsync(imageMetadata.UniqueLinkId);
 
-                await _imageMetadataRepository.SaveChangesAsync();
+                await _unitOfWork.SaveChangesAsync();
             }
             catch (MinioException ex)
             {
