@@ -17,7 +17,6 @@ namespace Tempic.Repository
         public async Task<ShortenedUrl> GetShortenedUrlByShortCodeAsync(string shortCode)
         {
             return await context.ShortenedUrls
-                .Include(x => x.ImageMetadata)
                 .FirstOrDefaultAsync(x => x.ShortCode == shortCode);
         }
 
@@ -29,18 +28,12 @@ namespace Tempic.Repository
         public async Task DeleteShortenedUrlAsync(Guid imageUniqueLinkId)
         {
             var entity = await context.ShortenedUrls
-            .Include(x => x.ImageMetadata)
-            .FirstOrDefaultAsync(x => x.ImageUniqueLinkId == imageUniqueLinkId);
+                .FirstOrDefaultAsync(x => x.ImageUniqueLinkId == imageUniqueLinkId);
             
             if (entity != null)
             {
                 context.ShortenedUrls.Remove(entity);
             }
-        }
-
-        public async Task SaveChangesAsync()
-        {
-            await context.SaveChangesAsync();
         }
 
         private bool disposed = false;

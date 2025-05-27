@@ -7,6 +7,5 @@ namespace Tempic.Repository
         Task<ShortenedUrl> GetShortenedUrlByShortCodeAsync(string shortCode);
         Task InsertShortenedUrlAsync(ShortenedUrl shortenedUrl);
         Task DeleteShortenedUrlAsync(Guid imageUniqueLinkId);
-        Task SaveChangesAsync();
     }
 }

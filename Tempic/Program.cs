@@ -7,7 +7,7 @@ using Minio;
 using Tempic.BackgroundServices;
 using Tempic.Data;
 using Tempic.DTOs;
-using Tempic.Interfaces;
+using Tempic.Repository;
 using Tempic.Services;
 using Tempic.Settings;
 using Tempic.Validator;
@@ -21,7 +21,15 @@ builder.Services.AddSwaggerGen();
 string sqLiteConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(sqLiteConnectionString));
+    options.UseSqlite(sqLiteConnectionString)
+    .EnableSensitiveDataLogging(true)
+    .EnableDetailedErrors(true)
+    .LogTo(
+        message => Console.WriteLine(message),
+        new[] { DbLoggerCategory.Database.Command.Name },
+        LogLevel.Information
+        )
+    );
 
 builder.Services.Configure<MinioSettings>(
     builder.Configuration.GetSection("MinioSettings"));
@@ -40,6 +48,9 @@ builder.Services.AddSingleton<IMinioClient>(mc =>
 builder.Services.AddScoped<IMinioService, MinioService>();
 builder.Services.AddScoped<IImageMetadataRepository, ImageMetadataRepository>();
 builder.Services.AddScoped<IImageUploadService, ImageUploadService>();
+builder.Services.AddScoped<IShortenedUrlRepository, ShortenedUrlRepository>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<IShortCodeGeneratorService, ShortCodeGeneratorService>();
 builder.Services.AddScoped<IValidator<UploadImageRequest>, UploadImageRequestValidator>();
 builder.Services.AddSingleton<FileExtensionContentTypeProvider>();
 

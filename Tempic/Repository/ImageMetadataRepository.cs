@@ -3,7 +3,7 @@ using Tempic.Data;
 using Tempic.Exceptions;
 using Tempic.Models;
 
-namespace Tempic.Interfaces
+namespace Tempic.Repository
 {
     public class ImageMetadataRepository : IImageMetadataRepository, IDisposable
     {
@@ -27,10 +27,6 @@ namespace Tempic.Interfaces
 
             if (entity != null)     
                 context.ImageMetadatas.Remove(entity);
-        }
-        public async Task SaveChangesAsync()
-        {
-            await context.SaveChangesAsync();
         }
 
         private bool disposed = false;
