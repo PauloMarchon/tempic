@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
 using Tempic.DTOs;
-using Tempic.Interfaces;
+using Tempic.Repository;
 using Tempic.Services;
 
 namespace Tempic.Controllers
@@ -35,16 +35,11 @@ namespace Tempic.Controllers
   
             _logger.LogInformation("Received file upload request.");
             var links = await _iImageUploadService.UploadImageAsync(request);
-            
-            _logger.LogInformation("File upload completed. Generating links..");
-            var imageUrls = links.Select(link => Url.Action("GetImage", "ImageMetadata", new { uniqueLinkId = link }, Request.Scheme)).ToList();
 
-            UploadImageResponse uploadImageResponse = new UploadImageResponse
-            {
-                Links = imageUrls
-            };
+            _logger.LogInformation("File upload completed. Generating shorted links..");      
+            var imagesUrls = links.Select(shortLink => Url.Action("RedirectToImage", "ShortUrl", new { shortCode = shortLink }, Request.Scheme)).ToList();
 
-            return Ok(uploadImageResponse);          
+            return Ok(new UploadImageResponse { Links = imagesUrls });          
         }
 
         [HttpGet("{uniqueLinkId:guid}")]

@@ -19,6 +19,7 @@ namespace Tempic.Controllers
         [HttpGet("{shortCode}")]
         public async Task<IActionResult> RedirectToImage(string shortCode)
         {
+            _logger.LogInformation("Received short code from URL: '{ShortCode}'", shortCode);
             var shortenedUrl = await _shortenedUrlRepository.GetShortenedUrlByShortCodeAsync(shortCode);
 
             if (shortenedUrl == null)
@@ -34,7 +35,7 @@ namespace Tempic.Controllers
 
             var originalImageUrl = Url.Action(
                 action: "GetImage", 
-                controller: "Image", 
+                controller: "ImageMetadata", 
                 values: new { uniqueLinkId = shortenedUrl.ImageUniqueLinkId }, 
                 protocol: Request.Scheme
                 );
